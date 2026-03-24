@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dcp-rag"
+version = "0.1.0"
+description = "Data Cost Protocol middleware for RAG pipelines — drop-in encoder that converts metadata to native DCP format"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Hiatama Workshop" },
+]
+keywords = ["dcp", "rag", "llm", "token-cost", "metadata", "pipeline"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+llamaindex = ["llama-index-core>=0.10.0"]
+langchain = ["langchain-core>=0.1.0"]
+haystack = ["haystack-ai>=2.0.0"]
+azure = ["fastapi>=0.100.0", "uvicorn>=0.20.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[project.urls]
+Repository = "https://github.com/hiatamaworkshop/dcp-rag"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dcp_rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
