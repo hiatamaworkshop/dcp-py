@@ -37,8 +37,5 @@ Repository = "https://github.com/hiatamaworkshop/dcp-rag"
 [tool.hatch.build.targets.wheel]
 packages = ["dcp_rag"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"dcp_rag/schemas" = "dcp_rag/schemas"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
