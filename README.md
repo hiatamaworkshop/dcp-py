@@ -266,7 +266,7 @@ v0.1.0 — Core encoder, 5 DB presets, 4 framework adapters. Unit-tested (72 tes
 ## Related
 
 - [engram](https://github.com/hiatamaworkshop/engram) — Origin project where DCP was developed
-- [Data Cost Protocol](https://engram-docs.vercel.app/engram/data-cost-protocol) — Full DCP specification
+- [Data Cost Protocol](https://engram-docs-8tj.pages.dev/engram/data-cost-protocol) — Full DCP specification
 
 ## License
 
