@@ -1,0 +1,502 @@
+{
+  "phi3:mini": {
+    "test1": [
+      {
+        "test": "basic_field_lookup",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "0.87"
+      },
+      {
+        "test": "field_by_position",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "auth-service"
+      },
+      {
+        "test": "count_and_filter",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "4"
+      }
+    ],
+    "test2": [
+      {
+        "test": "simple_generation",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[\"error\",\"auth-service\",1711284600,\"E_TIMEOUT\"]",
+        "sample": "```json\n[[\"$S\",\"log-entry:v1\",3,\"level\",\"auth-service\",\"timestamp\",\"E_TIMEOUT\"], [1711284600]]\n```\n\nIn this conversion, "
+      },
+      {
+        "test": "from_kv_pairs",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[200,42,\"/v1/users\",\"GET\"]",
+        "sample": "```json\n[null,\"GET\", \"/v1/users\", \"200\", 42]\n```"
+      }
+    ],
+    "test3": [
+      {
+        "test": "highest_score",
+        "nl_pass": "0/3",
+        "dcp_pass": "3/3",
+        "dcp_advantage": true
+      },
+      {
+        "test": "filter_by_value",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      }
+    ],
+    "test4": [
+      {
+        "density": "abbreviated",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "action=add, domain=knowledge:v1"
+      },
+      {
+        "density": "expanded",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "action=add, domain=auth"
+      },
+      {
+        "density": "full",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "action=add, domain=auth"
+      }
+    ],
+    "test5": [
+      {
+        "turn": "turn1_no_schema",
+        "sample": "```json\n\n[\n\n    {\n\n        \"action\": \"add\",\n\n        \"domain\": \"auth\",\n\n        \"detail\": \"jwt migration fix\",\n\n        "
+      },
+      {
+        "turn": "turn2_with_expanded_hint",
+        "sample": "```json\n[[\"replace\", \"payment\", \"gateway timeout increased\", 0.6]]\n```",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      },
+      {
+        "turn": "turn3_abbreviated_only",
+        "sample": "```json\n[\n    {\n        \"action\": \"flag\",\n        \"domain\": \"db\",\n        \"detail\": \"connection pool exhausted\",\n       ",
+        "checks": {
+          "valid_json": "0/3",
+          "correct_order": "0/3"
+        }
+      }
+    ]
+  },
+  "gemma2:2b": {
+    "test1": [
+      {
+        "test": "basic_field_lookup",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "0.92"
+      },
+      {
+        "test": "field_by_position",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "service"
+      },
+      {
+        "test": "count_and_filter",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "3"
+      }
+    ],
+    "test2": [
+      {
+        "test": "simple_generation",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "3/3"
+        },
+        "expected": "[\"error\",\"auth-service\",1711284600,\"E_TIMEOUT\"]",
+        "sample": "```json\n[\n  \"E_TIMEOUT\",\n  \"auth-service\",\n  \"1711284600\",\n  \"error_code\"\n]\n```"
+      },
+      {
+        "test": "from_kv_pairs",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[200,42,\"/v1/users\",\"GET\"]",
+        "sample": "[\"$S\", \"api-response:v1\", 4, \"status\", 200, \"latency_ms\", 42, \"endpoint\", \"/v1/users\", \"method\", \"GET\"]"
+      }
+    ],
+    "test3": [
+      {
+        "test": "highest_score",
+        "nl_pass": "0/3",
+        "dcp_pass": "3/3",
+        "dcp_advantage": true
+      },
+      {
+        "test": "filter_by_value",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      }
+    ],
+    "test4": [
+      {
+        "density": "abbreviated",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "action=add, domain=knowledge:v1"
+      },
+      {
+        "density": "expanded",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "action=add, domain=knowledge:v1"
+      },
+      {
+        "density": "full",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "action=add, domain=auth"
+      }
+    ],
+    "test5": [
+      {
+        "turn": "turn1_no_schema",
+        "sample": "[\n  {\n    \"Action\": \"add\",\n    \"Domain\": \"auth\",\n    \"Detail\": \"jwt migration fix\",\n    \"Confidence\": 0.8\n  }\n]"
+      },
+      {
+        "turn": "turn2_with_expanded_hint",
+        "sample": "```json\n[\n  {\n    \"action\": \"replace\",\n    \"domain\": \"payment\",\n    \"detail\": \"gateway timeout increased\",\n    \"confiden",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      },
+      {
+        "turn": "turn3_abbreviated_only",
+        "sample": "```json\n[\n  {\n    \"Action\": \"flag\",\n    \"Domain\": \"db\",\n    \"Detail\": \"connection pool exhausted\",\n    \"Confidence\": 0.9",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      }
+    ]
+  },
+  "qwen2.5:1.5b": {
+    "test1": [
+      {
+        "test": "basic_field_lookup",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "12"
+      },
+      {
+        "test": "field_by_position",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "The service name in the first data row is \"auth-service\"."
+      },
+      {
+        "test": "count_and_filter",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "3"
+      }
+    ],
+    "test2": [
+      {
+        "test": "simple_generation",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[\"error\",\"auth-service\",1711284600,\"E_TIMEOUT\"]",
+        "sample": "```json\n[\"auth-service:v1\", 4, \"level\",\"service\", \"timestamp\", \"error_code\", \"E_TIMEOUT\"]\n```"
+      },
+      {
+        "test": "from_kv_pairs",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "3/3"
+        },
+        "expected": "[200,42,\"/v1/users\",\"GET\"]",
+        "sample": "```json\n[\n    \"GET\",\n    \"/v1/users\",\n    200,\n    42\n]\n```"
+      }
+    ],
+    "test3": [
+      {
+        "test": "highest_score",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      },
+      {
+        "test": "filter_by_value",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      }
+    ],
+    "test4": [
+      {
+        "density": "abbreviated",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "In the first row of the provided data, the action being performed is \"add\" and it pertains to the domain \"knowledge\"."
+      },
+      {
+        "density": "expanded",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "In the first row of the provided data, the action being performed is \"add\" and it pertains to the domain \"auth\". The con"
+      },
+      {
+        "density": "full",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "action=add, domain=auth"
+      }
+    ],
+    "test5": [
+      {
+        "turn": "turn1_no_schema",
+        "sample": "```json\n[\n    {\n        \"action\": \"add\",\n        \"domain\": \"auth\",\n        \"detail\": \"jwt migration fix\",\n        \"confi"
+      },
+      {
+        "turn": "turn2_with_expanded_hint",
+        "sample": "```json\n[\n    {\n        \"action\": \"replace\",\n        \"domain\": \"payment\",\n        \"detail\": \"gateway timeout increased\",",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      },
+      {
+        "turn": "turn3_abbreviated_only",
+        "sample": "```json\n[\n    {\n        \"action\": \"flag\",\n        \"domain\": \"db\",\n        \"detail\": \"connection pool exhausted\",\n       ",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      }
+    ]
+  },
+  "llama3.2:1b": {
+    "test1": [
+      {
+        "test": "basic_field_lookup",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "The score for the second entry is 0.92."
+      },
+      {
+        "test": "field_by_position",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "The service name in the first data row is \"auth-service\"."
+      },
+      {
+        "test": "count_and_filter",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "There are 3 components in the \"healthy\" state."
+      }
+    ],
+    "test2": [
+      {
+        "test": "simple_generation",
+        "checks": {
+          "valid_json": "0/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[\"error\",\"auth-service\",1711284600,\"E_TIMEOUT\"]",
+        "sample": "```\n[\n  {\n    \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n    \"title\": \"log-entry:v1\",\n    \"type\": \"array\",\n  "
+      },
+      {
+        "test": "from_kv_pairs",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[200,42,\"/v1/users\",\"GET\"]",
+        "sample": "```\n[\n  \"$S\",\n  \"api-response:v1\",\n  4,\n  \"status\",\n  \"latency_ms\",\n  \"/v1/users\",\n  \"method\"\n]\n```"
+      }
+    ],
+    "test3": [
+      {
+        "test": "highest_score",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      },
+      {
+        "test": "filter_by_value",
+        "nl_pass": "3/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": false
+      }
+    ],
+    "test4": [
+      {
+        "density": "abbreviated",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "In the given data with schema reference:\n\n$S:knowledge:v1#fcbc [expand:GET /schemas/knowledge:v1]\n[\"add\",\"auth\",\"jwt mig"
+      },
+      {
+        "density": "expanded",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "To determine the action being performed and the domain in the first row of the data, I'll analyze the schema hint:\n\n$S:k"
+      },
+      {
+        "density": "full",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "To determine the action being performed and the domain associated with each item in the list, we need to analyze the sch"
+      }
+    ],
+    "test5": [
+      {
+        "turn": "turn1_no_schema",
+        "sample": "```\n[\n    {\n        \"action\": \"add\",\n        \"domain\": \"auth\",\n        \"detail\": \"jwt migration fix\",\n        \"confidenc"
+      },
+      {
+        "turn": "turn2_with_expanded_hint",
+        "sample": "```\n[\n  {\n    \"action\": \"replace\",\n    \"domain\": \"payment\",\n    \"detail\": \"gateway timeout increased\",\n    \"confidence\":",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      },
+      {
+        "turn": "turn3_abbreviated_only",
+        "sample": "```\n[\n  {\n    \"Action\": \"flag\",\n    \"Domain\": \"db\",\n    \"Detail\": \"connection pool exhausted\",\n    \"Confidence\": 0.9\n  }",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      }
+    ]
+  },
+  "qwen2.5:0.5b": {
+    "test1": [
+      {
+        "test": "basic_field_lookup",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "0.87"
+      },
+      {
+        "test": "field_by_position",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "auth-service"
+      },
+      {
+        "test": "count_and_filter",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "3"
+      }
+    ],
+    "test2": [
+      {
+        "test": "simple_generation",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[\"error\",\"auth-service\",1711284600,\"E_TIMEOUT\"]",
+        "sample": "```json\n[\n  {\n    \"log-entry\": \"$S\",\n    \"level\": \"service\",\n    \"timestamp\": \"1711284600\",\n    \"error_code\": \"E_TIMEOUT"
+      },
+      {
+        "test": "from_kv_pairs",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3",
+          "has_all_fields": "0/3"
+        },
+        "expected": "[200,42,\"/v1/users\",\"GET\"]",
+        "sample": "```json\n[\n  {\n    \"method\": \"GET\",\n    \"endpoint\": \"/v1/users\",\n    \"status\": 200,\n    \"latency_ms\": 42\n  }\n]\n```"
+      }
+    ],
+    "test3": [
+      {
+        "test": "highest_score",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      },
+      {
+        "test": "filter_by_value",
+        "nl_pass": "0/3",
+        "dcp_pass": "0/3",
+        "dcp_advantage": true
+      }
+    ],
+    "test4": [
+      {
+        "density": "abbreviated",
+        "pass_rate": "3/3",
+        "passed": true,
+        "sample": "The first row of data has no explicit action specified. It appears to be a list or array with three elements:\n\n1. \"add\"\n"
+      },
+      {
+        "density": "expanded",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "action=add, domain=knowledge:v1"
+      },
+      {
+        "density": "full",
+        "pass_rate": "0/3",
+        "passed": false,
+        "sample": "In the first row of data with full schema definition, the action being performed is \"add\". The domain associated with th"
+      }
+    ],
+    "test5": [
+      {
+        "turn": "turn1_no_schema",
+        "sample": "```json\n[\n    {\n        \"action\": \"add\",\n        \"domain\": \"auth\",\n        \"detail\": \"jwt migration fix\",\n        \"confi"
+      },
+      {
+        "turn": "turn2_with_expanded_hint",
+        "sample": "```json\n[\n    {\n        \"action\": \"replace\",\n        \"domain\": \"payment\",\n        \"detail\": \"gateway timeout increased\",",
+        "checks": {
+          "valid_json": "3/3",
+          "correct_order": "0/3"
+        }
+      },
+      {
+        "turn": "turn3_abbreviated_only",
+        "sample": "```json\n{\n  \"Action\": \"flag\",\n  \"Domain\": \"db\",\n  \"Detail\": \"connection pool exhausted\",\n  \"Confidence\": 0.9\n}\n```",
+        "checks": {
+          "valid_json": "0/3",
+          "correct_order": "0/3"
+        }
+      }
+    ]
+  }
+}
