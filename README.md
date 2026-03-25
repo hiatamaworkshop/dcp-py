@@ -261,7 +261,7 @@ RAG-specific DCP schemas (planned):
 
 ## Status
 
-v0.1.0 — Core encoder, 5 DB presets, 4 framework adapters. Unit-tested (72 tests) and integration-tested against live Qdrant with 69% metadata token reduction on real data.
+v0.1.0 — Core encoder, 5 DB presets, 4 framework adapters. Unit-tested (72 tests) and integration-tested against live Qdrant. Metadata token reduction varies by data structure: **40-60% on typical RAG metadata**, up to 69% on metadata-dense knowledge graphs (engram). Chunk text is unchanged — total prompt reduction depends on your metadata-to-content ratio (typically 10-15%).
 
 ## Related
 
