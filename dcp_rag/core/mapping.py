@@ -73,3 +73,70 @@ class FieldMapping:
         """Return a new FieldMapping with some paths overridden."""
         new_paths = {**self.paths, **overrides}
         return FieldMapping(schema_id=self.schema_id, paths=new_paths)
+
+    @classmethod
+    def auto_bind(
+        cls,
+        schema_id: str,
+        fields: tuple[str, ...] | list[str],
+        sample: dict[str, Any],
+        *,
+        overrides: dict[str, str] | None = None,
+    ) -> FieldMapping:
+        """Create a FieldMapping by auto-binding schema fields to source paths.
+
+        For each schema field, searches the sample data for a matching key:
+        1. Top-level exact match (e.g. field "score" → path "score")
+        2. Nested leaf match (e.g. field "source" → path "metadata.source")
+
+        Fields not found in the sample are skipped (will resolve to None).
+        Use overrides to manually bind fields that don't match by name.
+
+        Args:
+            schema_id: Target schema ID
+            fields: Schema field names in order
+            sample: A representative source data dict
+            overrides: Manual path overrides for specific fields
+
+        Returns:
+            FieldMapping with auto-detected + overridden paths
+        """
+        overrides = overrides or {}
+        flat = _flatten_keys(sample)
+        paths: dict[str, str] = {}
+
+        for field_name in fields:
+            if field_name in overrides:
+                paths[field_name] = overrides[field_name]
+                continue
+
+            # Try top-level exact match first
+            if field_name in sample and not isinstance(sample[field_name], dict):
+                paths[field_name] = field_name
+                continue
+
+            # Try nested leaf match
+            candidates = [
+                path for path in flat
+                if path.split(".")[-1] == field_name
+            ]
+            if len(candidates) == 1:
+                paths[field_name] = candidates[0]
+            elif len(candidates) > 1:
+                # Multiple matches — take shortest path (least nested)
+                paths[field_name] = min(candidates, key=len)
+            # else: not found, skip (will resolve to None)
+
+        return cls(schema_id=schema_id, paths=paths)
+
+
+def _flatten_keys(obj: dict[str, Any], prefix: str = "") -> dict[str, Any]:
+    """Flatten nested dict into dot-notation keys with leaf values."""
+    result: dict[str, Any] = {}
+    for k, v in obj.items():
+        full_key = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            result.update(_flatten_keys(v, full_key))
+        else:
+            result[full_key] = v
+    return result

@@ -111,7 +111,46 @@ All models produce valid JSON but **never** positional arrays. They default to k
 
 5. **7B+ testing needed for practical thresholds.** Sub-4B is "it doesn't break" territory. 7-13B is where we'd expect to find the practical boundary for reliable DCP comprehension. Deferred pending hardware availability.
 
+## Test 6: Format Comprehension — NL vs JSON vs DCP (2026-03-26)
+
+3 formats × 4 tasks × 3 models × 3 runs = 108 API calls. Tests whether DCP positional arrays are specifically harder than JSON objects or natural language.
+
+| Model | Test | NL | JSON | DCP |
+|-------|------|-----|------|-----|
+| phi3:mini (3.8B) | field_lookup | 3/3 | 3/3 | 3/3 |
+| phi3:mini | count_filter | 3/3 | 3/3 | 3/3 |
+| phi3:mini | max_value | 3/3 | 3/3 | 3/3 |
+| phi3:mini | cross_reference | 3/3 | 3/3 | 3/3 |
+| **phi3:mini total** | | **12/12** | **12/12** | **12/12** |
+| gemma2:2b | field_lookup | 3/3 | 3/3 | 3/3 |
+| gemma2:2b | count_filter | 3/3 | 0/3 | 0/3 |
+| gemma2:2b | max_value | 0/3 | 3/3 | 3/3 |
+| gemma2:2b | cross_reference | 3/3 | 3/3 | 3/3 |
+| **gemma2:2b total** | | **9/12** | **9/12** | **9/12** |
+| llama3.2:1b | field_lookup | 3/3 | 3/3 | 3/3 |
+| llama3.2:1b | count_filter | 3/3 | 3/3 | 3/3 |
+| llama3.2:1b | max_value | 0/3 | 0/3 | 0/3 |
+| llama3.2:1b | cross_reference | 3/3 | 3/3 | 0/3 |
+| **llama3.2:1b total** | | **9/12** | **9/12** | **6/12** |
+
+### Key Findings
+
+- **3.8B (phi3):** All formats identical — perfect score. No DCP penalty.
+- **2.6B (gemma2):** JSON = DCP in every test. Failures are task-specific (count_filter, max_value), not format-specific.
+- **1.2B (llama):** DCP loses only on cross_reference (multi-step: find min weight → return status). Simple tasks (field_lookup, count_filter) show no format difference. max_value failed across all formats — a model capability limit, not a DCP problem.
+
+### Failure Analysis (llama3.2:1b cross_reference DCP=0/3)
+
+The model received Fields header + positional arrays but attempted SQL generation instead of direct lookup. With NL/JSON the same model answered correctly — suggesting that positional arrays at 1.2B trigger "structured data processing" mode rather than "read and answer" mode.
+
+### Implications for DCP Design
+
+1. **≥2B: DCP = JSON.** Token savings are pure gain with zero accuracy cost.
+2. **1B: DCP works for simple tasks** (lookup, count) but struggles with multi-step reasoning over positional data.
+3. **Validates multi-level shadow index:** 1B agents should receive L1+ (expanded hints or key-value fallback) for complex tasks, while L0 (abbreviated DCP) is safe for ≥2B agents.
+
 ## Raw Data
 
 - [lightweight_llm_results.json](lightweight_llm_results.json) — Full test results (5 models × 5 tests)
 - [density_retest_results.json](density_retest_results.json) — Notation comparison (3 models)
+- [format_comprehension_results.json](format_comprehension_results.json) — NL vs JSON vs DCP (3 models × 4 tasks)

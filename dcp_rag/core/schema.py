@@ -118,6 +118,72 @@ class DcpSchema:
         active = self.fields_from_mask(mask)
         return ["$S", self.cutdown_id(mask), len(active)] + list(active)
 
+    def s_header_at_level(
+        self, mask: int | None = None, *, shadow_level: int = 2,
+    ) -> str | list[Any] | dict[str, Any]:
+        """Generate header at the specified shadow level.
+
+        Shadow levels:
+            0 — fields only: list of field names, no protocol info
+            1 — with schema ID: field names + schema identifier
+            2 — full protocol: $S + ID + field count + field names (default)
+            3 — full schema definition: complete JSON schema object
+            4 — NL fallback: natural language field descriptions
+
+        Returns:
+            Level 0-2: list (JSON-serializable)
+            Level 3: dict (JSON-serializable schema definition)
+            Level 4: str (natural language)
+        """
+        active = self.fields if (mask is None or mask == self.full_mask) else self.fields_from_mask(mask)
+        sid = self.cutdown_id(mask) if mask is not None else self.id
+
+        if shadow_level <= 0:
+            # L0: fields only
+            return list(active)
+
+        if shadow_level == 1:
+            # L1: with schema ID
+            return ["$S", sid] + list(active)
+
+        if shadow_level == 2:
+            # L2: full protocol (original behavior)
+            return self.s_header(mask)
+
+        if shadow_level == 3:
+            # L3: full schema definition
+            types_dict: dict[str, Any] = {}
+            for fname in active:
+                ft = self.types.get(fname)
+                if ft:
+                    td: dict[str, Any] = {"type": ft.type}
+                    if ft.description:
+                        td["description"] = ft.description
+                    if ft.enum is not None:
+                        td["enum"] = ft.enum
+                    if ft.min is not None:
+                        td["min"] = ft.min
+                    if ft.max is not None:
+                        td["max"] = ft.max
+                    types_dict[fname] = td
+            return {
+                "$dcp": "schema",
+                "id": sid,
+                "fields": list(active),
+                "fieldCount": len(active),
+                "types": types_dict,
+            }
+
+        # L4: NL fallback
+        parts = []
+        for fname in active:
+            ft = self.types.get(fname)
+            if ft and ft.description:
+                parts.append(f"{fname}: {ft.description}")
+            else:
+                parts.append(fname)
+        return "Fields: " + ", ".join(parts)
+
     def validate_row(self, row: list[Any], mask: int | None = None) -> list[str]:
         """Validate a positional array against this schema.
 

@@ -195,15 +195,21 @@ class DcpEncoder:
         self,
         chunks: list[dict[str, Any]],
         texts: list[str] | None = None,
+        *,
+        shadow_level: int = 2,
     ) -> EncodedBatch:
         """Encode a batch of chunks into DCP format.
 
         Args:
             chunks: List of source data dicts (e.g. Vector DB results)
             texts: List of chunk texts. If None, extracted via text_key.
+            shadow_level: Header density level (0-4).
+                0 = fields only, 1 = with schema ID, 2 = full protocol (default),
+                3 = full schema def, 4 = NL fallback.
 
         Returns:
-            EncodedBatch with $S header, optional $G groups, and data rows.
+            EncodedBatch with header, optional $G groups, and data rows.
+            For shadow_level=4, data rows are NL key-value strings instead of arrays.
         """
         if not chunks:
             return EncodedBatch(
@@ -240,12 +246,27 @@ class DcpEncoder:
                 mask=0, is_cutdown=False, is_grouped=False,
             )
 
-        # Build $S header
+        # Build header at requested shadow level
         active_fields = self._schema.fields_from_mask(mask)
         schema_id = self._schema.cutdown_id(mask)
-        header = json.dumps(self._schema.s_header(mask))
+        header_obj = self._schema.s_header_at_level(mask, shadow_level=shadow_level)
+        header = json.dumps(header_obj) if not isinstance(header_obj, str) else header_obj
 
-        # Decide grouping
+        # NL fallback (L4): key-value text instead of positional arrays
+        if shadow_level >= 4:
+            rows = []
+            for resolved, text in zip(resolved_batch, texts):
+                parts = [
+                    f"{f}: {resolved.get(f)}" for f in active_fields
+                    if resolved.get(f) is not None
+                ]
+                rows.append((", ".join(parts), text))
+            return EncodedBatch(
+                header=header, groups=[(None, rows)], schema_id=schema_id,
+                mask=mask, is_cutdown=is_cutdown, is_grouped=False,
+            )
+
+        # Decide grouping (L0-L3: positional arrays)
         use_grouping = self._should_group(resolved_batch)
 
         if use_grouping:

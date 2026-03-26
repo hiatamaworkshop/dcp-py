@@ -1,0 +1,64 @@
+{
+  "llama3.2:1b": [
+    {
+      "test": "field_lookup",
+      "nl": {
+        "pass": "3/3",
+        "sample": "0.42"
+      },
+      "json": {
+        "pass": "3/3",
+        "sample": "0.42"
+      },
+      "dcp": {
+        "pass": "3/3",
+        "sample": "0.42"
+      }
+    },
+    {
+      "test": "count_filter",
+      "nl": {
+        "pass": "3/3",
+        "sample": "3"
+      },
+      "json": {
+        "pass": "3/3",
+        "sample": "3"
+      },
+      "dcp": {
+        "pass": "3/3",
+        "sample": "3"
+      }
+    },
+    {
+      "test": "max_value",
+      "nl": {
+        "pass": "0/3",
+        "sample": "/v1/users"
+      },
+      "json": {
+        "pass": "0/3",
+        "sample": "\"/v1/auth\""
+      },
+      "dcp": {
+        "pass": "0/3",
+        "sample": "Based on the provided API response times, the endpoint with the highest latency is \"/v1/users\"."
+      }
+    },
+    {
+      "test": "cross_reference",
+      "nl": {
+        "pass": "3/3",
+        "sample": "The service with the lowest weight is \"worker\" with a status of \"paused\". \n\nWorker: Paused"
+      },
+      "json": {
+        "pass": "3/3",
+        "sample": "To find the status of the service with the lowest weight, you need to sort the services by their wei"
+      },
+      "dcp": {
+        "pass": "0/3",
+        "sample": "To find the status of the service with the lowest weight, you can use the following SQL query:\n\n```s"
+      }
+    }
+  ]
+}

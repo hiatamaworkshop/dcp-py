@@ -1,0 +1,49 @@
+{
+  "llama3.2:1b": [
+    {
+      "test": "field_lookup",
+      "L0": {
+        "pass": "3/3",
+        "sample": "0.42"
+      },
+      "L2": {
+        "pass": "0/3",
+        "sample": "0"
+      },
+      "L4": {
+        "pass": "3/3",
+        "sample": "0.42"
+      }
+    },
+    {
+      "test": "count_filter",
+      "L0": {
+        "pass": "3/3",
+        "sample": "3"
+      },
+      "L2": {
+        "pass": "3/3",
+        "sample": "3"
+      },
+      "L4": {
+        "pass": "3/3",
+        "sample": "3"
+      }
+    },
+    {
+      "test": "max_value",
+      "L0": {
+        "pass": "0/3",
+        "sample": "\"/v1/users\""
+      },
+      "L2": {
+        "pass": "0/3",
+        "sample": "Based on the API response times provided, the endpoint with the highest latency is \"/v1/users\"."
+      },
+      "L4": {
+        "pass": "0/3",
+        "sample": "/ v1/auth"
+      }
+    }
+  ]
+}
