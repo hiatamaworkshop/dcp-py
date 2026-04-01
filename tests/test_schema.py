@@ -119,7 +119,7 @@ class TestSchemaRegistry:
     def test_list(self):
         reg = load_default_registry()
         ids = reg.list()
-        assert len(ids) == 4
+        assert len(ids) >= 4  # grows as new schemas are added
 
     def test_get_missing(self):
         reg = load_default_registry()

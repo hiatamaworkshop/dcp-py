@@ -1,0 +1,14 @@
+{
+  "$dcp": "schema",
+  "id": "log-entry:v1",
+  "description": "Structured log entry — one line per event",
+  "fields": ["ts", "level", "service", "msg"],
+  "fieldCount": 4,
+  "types": {
+    "ts":      { "type": "number", "description": "Unix timestamp ms" },
+    "level":   { "type": "string", "enum": ["debug", "info", "warn", "error"] },
+    "service": { "type": "string", "description": "Service or component name" },
+    "msg":     { "type": "string", "description": "Log message" }
+  },
+  "origin": { "source": "log/stream", "direction": "output" }
+}

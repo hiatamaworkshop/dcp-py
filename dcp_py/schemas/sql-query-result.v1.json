@@ -1,0 +1,14 @@
+{
+  "$dcp": "schema",
+  "id": "sql-row-meta:v1",
+  "description": "SQL query result row metadata",
+  "fields": ["db", "table", "row_num", "query_ms"],
+  "fieldCount": 4,
+  "types": {
+    "db":       { "type": "string", "description": "Database name" },
+    "table":    { "type": "string", "description": "Table or view name" },
+    "row_num":  { "type": "number", "description": "Row index (0-based)" },
+    "query_ms": { "type": "number", "description": "Query execution time ms", "min": 0 }
+  },
+  "origin": { "source": "sql/query", "direction": "output" }
+}
