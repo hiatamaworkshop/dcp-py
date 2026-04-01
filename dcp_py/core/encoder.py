@@ -351,7 +351,7 @@ class DcpEncoder:
 
         - None → '-' (absent marker)
         - list of primitives → comma-joined string (or '-' if empty)
-        - list of dicts + nestSchemas entry → ["$R", schemaId, ...rows]
+        - list of dicts + nestSchemas entry → ["$N", schemaId, ...rows]
         - anything else → pass through
         """
         if value is None:
@@ -365,9 +365,9 @@ class DcpEncoder:
                 joined = ",".join(str(v) for v in value)
                 return joined if joined else _ABSENT
 
-            # Nested sub-schema: encode as $R reference
+            # Nested sub-schema: encode as $N reference
             if len(value) == 0:
-                return ["$R", nest["schema"]["id"]]
+                return ["$N", nest["schema"]["id"]]
 
             if not all(isinstance(item, dict) for item in value):
                 # Non-dict items: fall back to join
@@ -382,8 +382,8 @@ class DcpEncoder:
             sub_encoder = DcpEncoder(schema=sub_schema, mapping=sub_mapping)
             sub_batch = sub_encoder.encode(value)
             if not sub_batch.header:
-                return ["$R", sub_schema.id]
+                return ["$N", sub_schema.id]
             row_arrs = [json.loads(r) for r, _ in sub_batch.rows]
-            return ["$R", sub_batch.schema_id, *row_arrs]
+            return ["$N", sub_batch.schema_id, *row_arrs]
 
         return value

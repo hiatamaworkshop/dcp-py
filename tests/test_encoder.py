@@ -410,8 +410,8 @@ class TestNestedSchema:
         record = {"id": "ORD-1", "items": [{"sku": "A001", "qty": 2}, {"sku": "B002", "qty": 1}]}
         result = encoder.encode([record])
         row = json.loads(result.rows[0][0])
-        # row[1] should be ["$R", "order-item:v1", ["A001", 2], ["B002", 1]]
-        assert row[1][0] == "$R"
+        # row[1] should be ["$N", "order-item:v1", ["A001", 2], ["B002", 1]]
+        assert row[1][0] == "$N"
         assert row[1][1] == "order-item:v1"
         assert ["A001", 2] in row[1]
         assert ["B002", 1] in row[1]
@@ -437,4 +437,4 @@ class TestNestedSchema:
         encoder = DcpEncoder(schema=schema, mapping={"id": "id", "items": "items"})
         result = encoder.encode([{"id": "ORD-2", "items": []}])
         row = json.loads(result.rows[0][0])
-        assert row[1] == ["$R", "order-item:v1"]
+        assert row[1] == ["$N", "order-item:v1"]
