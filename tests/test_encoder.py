@@ -337,3 +337,104 @@ class TestDataFrame:
         df = pd.DataFrame([{"x": 1, "y": 2}])
         encoder, batch = DcpEncoder.from_dataframe(df, domain="my-data", version=2)
         assert "my-data:v2" in batch.schema_id
+
+class TestArrayJoin:
+    """Array values must be comma-joined, not passed through as lists."""
+
+    def test_list_field_joined(self, registry):
+        schema = DcpSchema.from_dict({
+            "$dcp": "schema",
+            "id": "test-array:v1",
+            "fields": ["name", "tags"],
+            "fieldCount": 2,
+            "types": {
+                "name": {"type": "string"},
+                "tags": {"type": "string"},
+            },
+        })
+        encoder = DcpEncoder(schema=schema, mapping={"name": "name", "tags": "tags"})
+        result = encoder.encode([{"name": "Alice", "tags": ["python", "dcp"]}])
+        row = json.loads(result.rows[0][0])
+        assert row[1] == "python,dcp"
+
+    def test_empty_list_becomes_dash(self, registry):
+        schema = DcpSchema.from_dict({
+            "$dcp": "schema",
+            "id": "test-array:v1",
+            "fields": ["name", "tags"],
+            "fieldCount": 2,
+            "types": {
+                "name": {"type": "string"},
+                "tags": {"type": "string"},
+            },
+        })
+        encoder = DcpEncoder(schema=schema, mapping={"name": "name", "tags": "tags"})
+        result = encoder.encode([{"name": "Alice", "tags": []}])
+        row = json.loads(result.rows[0][0])
+        assert row[1] == "-"
+
+
+class TestNestedSchema:
+    """$R nested sub-schema encoding."""
+
+    def test_nested_array_of_dicts(self, registry):
+        schema = DcpSchema.from_dict({
+            "$dcp": "schema",
+            "id": "order:v1",
+            "fields": ["id", "items"],
+            "fieldCount": 2,
+            "types": {
+                "id": {"type": "string"},
+                "items": {"type": "string"},
+            },
+            "nestSchemas": {
+                "items": {
+                    "schema": {
+                        "$dcp": "schema",
+                        "id": "order-item:v1",
+                        "fields": ["sku", "qty"],
+                        "fieldCount": 2,
+                        "types": {
+                            "sku": {"type": "string"},
+                            "qty": {"type": "number"},
+                        },
+                    },
+                    "mapping": {
+                        "schemaId": "order-item:v1",
+                        "paths": {"sku": "sku", "qty": "qty"},
+                    },
+                }
+            },
+        })
+        encoder = DcpEncoder(schema=schema, mapping={"id": "id", "items": "items"})
+        record = {"id": "ORD-1", "items": [{"sku": "A001", "qty": 2}, {"sku": "B002", "qty": 1}]}
+        result = encoder.encode([record])
+        row = json.loads(result.rows[0][0])
+        # row[1] should be ["$R", "order-item:v1", ["A001", 2], ["B002", 1]]
+        assert row[1][0] == "$R"
+        assert row[1][1] == "order-item:v1"
+        assert ["A001", 2] in row[1]
+        assert ["B002", 1] in row[1]
+
+    def test_nested_empty_array(self, registry):
+        schema = DcpSchema.from_dict({
+            "$dcp": "schema",
+            "id": "order:v1",
+            "fields": ["id", "items"],
+            "fieldCount": 2,
+            "types": {"id": {"type": "string"}, "items": {"type": "string"}},
+            "nestSchemas": {
+                "items": {
+                    "schema": {
+                        "$dcp": "schema", "id": "order-item:v1",
+                        "fields": ["sku", "qty"], "fieldCount": 2,
+                        "types": {"sku": {"type": "string"}, "qty": {"type": "number"}},
+                    },
+                    "mapping": {"schemaId": "order-item:v1", "paths": {"sku": "sku", "qty": "qty"}},
+                }
+            },
+        })
+        encoder = DcpEncoder(schema=schema, mapping={"id": "id", "items": "items"})
+        result = encoder.encode([{"id": "ORD-2", "items": []}])
+        row = json.loads(result.rows[0][0])
+        assert row[1] == ["$R", "order-item:v1"]

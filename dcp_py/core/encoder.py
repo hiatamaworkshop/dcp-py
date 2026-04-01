@@ -2,8 +2,14 @@
 
 Ties Layer 0 (schema) and Layer 1 (mapping) together. Handles:
 - Bitmask-based cutdown schema detection
-- $S header generation at configurable shadow levels
+- $S header generation at configurable header density levels
 - Positional array encoding with '-' for absent values
+- $R nested sub-schema encoding for array-of-objects fields
+
+Note on header_density: this parameter controls how much $S header context
+accompanies the data (0=fields only, 4=NL fallback). It is NOT the same as
+the semantic shadow concept in DCP (ValidationShadow / RoutingShadow), which
+describes the model's schema awareness level. Do not conflate the two.
 
 Note on $G grouping: not included in the encoder. If you want to group
 rows by a shared field (e.g. source document), do it in your own pipeline
@@ -155,7 +161,7 @@ class DcpEncoder:
         version: int = 1,
         include: list[str] | None = None,
         exclude: list[str] | None = None,
-        shadow_level: int = 2,
+        header_density: int = 2,
     ) -> tuple[DcpEncoder, EncodedBatch]:
         """Encode a pandas DataFrame directly to DCP.
 
@@ -168,7 +174,7 @@ class DcpEncoder:
             version: Schema version number
             include: Column names to include (default: all)
             exclude: Column names to exclude
-            shadow_level: Header density (0-4, default 2)
+            header_density: Header density (0-4, default 2)
 
         Returns:
             (DcpEncoder, EncodedBatch)
@@ -195,7 +201,7 @@ class DcpEncoder:
             include=cols,
         )
         encoder = cls(schema=draft.schema, mapping=draft.mapping)
-        batch = encoder.encode(records, shadow_level=shadow_level)
+        batch = encoder.encode(records, header_density=header_density)
         return encoder, batch
 
     def detect_mask(self, resolved_batch: list[dict[str, Any]]) -> int:
@@ -217,7 +223,7 @@ class DcpEncoder:
         records: list[dict[str, Any]],
         texts: list[str] | None = None,
         *,
-        shadow_level: int = 2,
+        header_density: int = 2,
     ) -> EncodedBatch:
         """Encode a batch of records into DCP format.
 
@@ -226,7 +232,7 @@ class DcpEncoder:
             texts: Optional list of text bodies (one per record). If None and
                    text_key is set, extracted automatically. Pass [] or omit
                    for metadata-only encoding.
-            shadow_level: Header density level (0-4).
+            header_density: Header density level (0-4).
                 0 = field names only (no $S, no schema ID)
                 1 = $S + schema ID
                 2 = $S + ID + field count + field names (default)
@@ -275,11 +281,11 @@ class DcpEncoder:
 
         active_fields = self._schema.fields_from_mask(mask)
         schema_id = self._schema.cutdown_id(mask)
-        header_obj = self._schema.s_header_at_level(mask, shadow_level=shadow_level)
+        header_obj = self._schema.s_header_at_level(mask, header_density=header_density)
         header = json.dumps(header_obj) if not isinstance(header_obj, str) else header_obj
 
         # NL fallback (L4)
-        if shadow_level >= 4:
+        if header_density >= 4:
             rows = []
             for resolved, text in zip(resolved_batch, texts):
                 parts = [
@@ -297,7 +303,7 @@ class DcpEncoder:
         rows = []
         for resolved, text in zip(resolved_batch, texts):
             row = [
-                resolved.get(f) if resolved.get(f) is not None else _ABSENT
+                self._encode_field_value(f, resolved.get(f))
                 for f in active_fields
             ]
             rows.append((json.dumps(row), text))
@@ -331,7 +337,7 @@ class DcpEncoder:
 
         active_fields = self._schema.fields_from_mask(mask)
         row = [
-            resolved.get(f) if resolved.get(f) is not None else _ABSENT
+            self._encode_field_value(f, resolved.get(f))
             for f in active_fields
         ]
 
@@ -339,3 +345,45 @@ class DcpEncoder:
             "_dcp": row,
             "_dcp_schema": self._schema.cutdown_id(mask),
         }
+
+    def _encode_field_value(self, field_name: str, value: Any) -> Any:
+        """Encode a single field value.
+
+        - None → '-' (absent marker)
+        - list of primitives → comma-joined string (or '-' if empty)
+        - list of dicts + nestSchemas entry → ["$R", schemaId, ...rows]
+        - anything else → pass through
+        """
+        if value is None:
+            return _ABSENT
+
+        nest = (self._schema.nest_schemas or {}).get(field_name)
+
+        if isinstance(value, list):
+            if not nest:
+                # Simple array: join as comma-separated string
+                joined = ",".join(str(v) for v in value)
+                return joined if joined else _ABSENT
+
+            # Nested sub-schema: encode as $R reference
+            if len(value) == 0:
+                return ["$R", nest["schema"]["id"]]
+
+            if not all(isinstance(item, dict) for item in value):
+                # Non-dict items: fall back to join
+                joined = ",".join(str(v) for v in value)
+                return joined if joined else _ABSENT
+
+            sub_schema = DcpSchema.from_dict(nest["schema"])
+            sub_mapping = FieldMapping(
+                schema_id=sub_schema.id,
+                paths=nest["mapping"]["paths"],
+            )
+            sub_encoder = DcpEncoder(schema=sub_schema, mapping=sub_mapping)
+            sub_batch = sub_encoder.encode(value)
+            if not sub_batch.header:
+                return ["$R", sub_schema.id]
+            row_arrs = [json.loads(r) for r, _ in sub_batch.rows]
+            return ["$R", sub_batch.schema_id, *row_arrs]
+
+        return value

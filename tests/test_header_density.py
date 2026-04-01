@@ -1,4 +1,4 @@
-"""Tests for shadow_level — header density control in DcpEncoder."""
+"""Tests for header_density — header density control in DcpEncoder."""
 
 import json
 import pytest
@@ -41,7 +41,7 @@ class TestShadowLevel:
     def test_level0_fields_only(self):
         """L0: just field names, no protocol markers."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=0)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=0)
         header = json.loads(result.header)
 
         assert "$S" not in header
@@ -53,7 +53,7 @@ class TestShadowLevel:
     def test_level1_with_schema_id(self):
         """L1: $S + schema ID + field names, no field count."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=1)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=1)
         header = json.loads(result.header)
 
         assert header[0] == "$S"
@@ -65,7 +65,7 @@ class TestShadowLevel:
     def test_level2_full_protocol(self):
         """L2: $S + ID + field count + field names (default, original behavior)."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=2)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=2)
         header = json.loads(result.header)
 
         assert header[0] == "$S"
@@ -74,16 +74,16 @@ class TestShadowLevel:
         assert header[3] == "source"
 
     def test_level2_is_default(self):
-        """Default shadow_level should be 2."""
+        """Default header_density should be 2."""
         enc = make_encoder()
         default_result = enc.encode(CHUNKS, texts=TEXTS)
-        explicit_result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=2)
+        explicit_result = enc.encode(CHUNKS, texts=TEXTS, header_density=2)
         assert default_result.header == explicit_result.header
 
     def test_level3_full_schema(self):
         """L3: complete schema definition as JSON object."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=3)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=3)
         header = json.loads(result.header)
 
         assert isinstance(header, dict)
@@ -96,7 +96,7 @@ class TestShadowLevel:
     def test_level4_nl_fallback_header(self):
         """L4: header is natural language field descriptions."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=4)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=4)
 
         # Header should be a plain string, not JSON
         assert result.header.startswith("Fields:")
@@ -105,7 +105,7 @@ class TestShadowLevel:
     def test_level4_nl_fallback_rows(self):
         """L4: data rows are key-value strings, not positional arrays."""
         enc = make_encoder()
-        result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=4)
+        result = enc.encode(CHUNKS, texts=TEXTS, header_density=4)
 
         meta, text = result.rows[0]
         assert "source: docs/auth.md" in meta
@@ -115,14 +115,14 @@ class TestShadowLevel:
     def test_data_rows_unchanged_l0_to_l3(self):
         """L0-L3 should produce identical data rows (only header differs)."""
         enc = make_encoder()
-        results = [enc.encode(CHUNKS, texts=TEXTS, shadow_level=i) for i in range(4)]
+        results = [enc.encode(CHUNKS, texts=TEXTS, header_density=i) for i in range(4)]
 
         rows_per_level = [[meta for meta, _ in r.rows] for r in results]
         for i in range(1, 4):
             assert rows_per_level[i] == rows_per_level[0], \
                 f"L{i} data rows differ from L0"
 
-    def test_cutdown_with_shadow_levels(self):
+    def test_cutdown_with_header_densitys(self):
         """Cutdown should work at all shadow levels."""
         enc = make_encoder()
         sparse_chunks = [
@@ -131,12 +131,12 @@ class TestShadowLevel:
         texts = ["text"]
 
         for level in range(5):
-            result = enc.encode(sparse_chunks, texts=texts, shadow_level=level)
+            result = enc.encode(sparse_chunks, texts=texts, header_density=level)
             assert result.is_cutdown, f"L{level} should detect cutdown"
 
     def test_no_grouping_in_any_level(self):
         """$G should never appear at any shadow level."""
         enc = make_encoder()
         for level in range(5):
-            result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=level)
+            result = enc.encode(CHUNKS, texts=TEXTS, header_density=level)
             assert '"$G"' not in result.to_string()

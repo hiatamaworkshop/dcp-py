@@ -88,6 +88,7 @@ class DcpSchema:
     types: dict[str, FieldType] = field(default_factory=dict)
     examples: tuple[tuple[Any, ...], ...] = ()
     origin: dict[str, str] | None = None
+    nest_schemas: dict[str, Any] | None = None  # field → {schema: DcpSchemaDef, mapping: FieldMappingDef}
 
     @property
     def full_mask(self) -> int:
@@ -124,7 +125,7 @@ class DcpSchema:
         return ["$S", self.cutdown_id(mask), len(active)] + list(active)
 
     def s_header_at_level(
-        self, mask: int | None = None, *, shadow_level: int = 2,
+        self, mask: int | None = None, *, header_density: int = 2,
     ) -> str | list[Any] | dict[str, Any]:
         """Generate header at the specified shadow level.
 
@@ -143,19 +144,19 @@ class DcpSchema:
         active = self.fields if (mask is None or mask == self.full_mask) else self.fields_from_mask(mask)
         sid = self.cutdown_id(mask) if mask is not None else self.id
 
-        if shadow_level <= 0:
+        if header_density <= 0:
             # L0: fields only
             return list(active)
 
-        if shadow_level == 1:
+        if header_density == 1:
             # L1: with schema ID
             return ["$S", sid] + list(active)
 
-        if shadow_level == 2:
+        if header_density == 2:
             # L2: full protocol (original behavior)
             return self.s_header(mask)
 
-        if shadow_level == 3:
+        if header_density == 3:
             # L3: full schema definition
             types_dict: dict[str, Any] = {}
             for fname in active:
@@ -231,6 +232,7 @@ class DcpSchema:
         fields = tuple(data["fields"])
         examples = tuple(tuple(ex) for ex in data.get("examples", []))
         origin = data.get("origin")  # optional: {source, direction}
+        nest_schemas = data.get("nestSchemas")  # optional: {field: {schema, mapping}}
 
         return cls(
             id=data["id"],
@@ -240,6 +242,7 @@ class DcpSchema:
             types=types,
             examples=examples,
             origin=origin,
+            nest_schemas=nest_schemas,
         )
 
     @classmethod
