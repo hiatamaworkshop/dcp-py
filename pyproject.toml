@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dcp-py"
-version = "0.2.0"
+version = "0.3.0"
 description = "Data Cost Protocol for Python — universal dict-to-positional-array encoder for LLM context compression"
 readme = "README.md"
 license = "Apache-2.0"
