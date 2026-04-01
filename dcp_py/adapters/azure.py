@@ -1,7 +1,7 @@
 """Azure AI Search Custom Skill adapter: HTTP endpoint.
 
 Usage:
-    uvicorn dcp_rag.adapters.azure:app --host 0.0.0.0 --port 8080
+    uvicorn dcp_py.adapters.azure:app --host 0.0.0.0 --port 8080
 
 Azure AI Search Custom Skills expect:
   POST / with { values: [{ recordId, data: { ... } }] }
@@ -22,7 +22,7 @@ except ImportError:
         "Install with: pip install dcp-rag[azure]"
     )
 
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.encoder import DcpEncoder
 
 
 # -- Request/Response models --
@@ -88,6 +88,6 @@ async def process_skill(request: SkillInput) -> SkillOutput:
 
 @app.get("/schemas")
 async def list_schemas() -> dict[str, Any]:
-    from dcp_rag.core.schema import load_default_registry
+    from dcp_py.core.schema import load_default_registry
     registry = load_default_registry()
     return {"schemas": registry.list()}

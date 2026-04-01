@@ -2,7 +2,7 @@
 
 import pytest
 
-from dcp_rag.core.mapping import FieldMapping, resolve_path
+from dcp_py.core.mapping import FieldMapping, resolve_path
 
 
 class TestResolvePath:

@@ -1,4 +1,4 @@
-"""Integration test: DCP-RAG against live engram Qdrant instance.
+"""Integration test: dcp-py against live engram Qdrant instance.
 
 Connects to engram's Qdrant (localhost:6333, collection "engram"),
 reads existing nodes, encodes them with DCP, and verifies output.
@@ -34,9 +34,9 @@ import urllib.request
 import urllib.error
 import pytest
 
-from dcp_rag.core.schema import DcpSchema, SchemaRegistry, load_default_registry
-from dcp_rag.core.mapping import FieldMapping
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.schema import DcpSchema, SchemaRegistry, load_default_registry
+from dcp_py.core.mapping import FieldMapping
+from dcp_py.core.encoder import DcpEncoder
 
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
@@ -124,7 +124,7 @@ ENGRAM_MAPPING = FieldMapping(
         "trigger": "payload.trigger",
         "status": "payload.status",
         "weight": "payload.weight",
-        "tags": "payload.tags_joined",  # we'll join tags pre-encoding
+        "tags": "payload.tags_joined",  # join tags pre-encoding
     },
 )
 
@@ -145,7 +145,6 @@ class TestEngramQdrantIntegration:
     def test_scroll_returns_data(self):
         points = qdrant_scroll(limit=5)
         assert len(points) > 0
-        # Verify engram payload structure
         p = points[0]
         assert "id" in p
         assert "payload" in p
@@ -158,85 +157,45 @@ class TestEngramQdrantIntegration:
         points = qdrant_scroll(limit=10)
         assert len(points) > 0
 
-        # Build custom schema
         schema = DcpSchema.from_dict(ENGRAM_SCHEMA_DEF)
-        registry = load_default_registry()
 
-        # Pre-process: join tags list into comma string for DCP
         for p in points:
             tags = p["payload"].get("tags", [])
             p["payload"]["tags_joined"] = ",".join(tags) if tags else None
 
-        # Create encoder with custom schema + mapping
         encoder = DcpEncoder(
             schema=schema,
             mapping=ENGRAM_MAPPING,
-            group_key="projectId",
             text_key="payload.summary",
         )
 
         result = encoder.encode(points)
 
-        # Basic structure checks
         assert result.header != ""
         assert result.mask > 0
         header = json.loads(result.header)
         assert header[0] == "$S"
         assert "engram-node-meta" in header[1]
 
-        # Print for visual inspection
+        # Absent values must be '-', not None
+        for row_json, _ in result.rows:
+            row = json.loads(row_json)
+            assert None not in row
+
         print("\n--- DCP Encoded engram nodes ---")
         for line in result.to_lines()[:20]:
             print(line)
 
-    def test_encode_with_grouping(self):
-        """Verify $G grouping works with real projectId-based groups."""
-        points = qdrant_scroll(limit=20)
-        if len(points) < 2:
-            pytest.skip("Need at least 2 points for grouping test")
-
-        schema = DcpSchema.from_dict(ENGRAM_SCHEMA_DEF)
-
-        for p in points:
-            tags = p["payload"].get("tags", [])
-            p["payload"]["tags_joined"] = ",".join(tags) if tags else None
-
-        encoder = DcpEncoder(
-            schema=schema,
-            mapping=ENGRAM_MAPPING,
-            group_key="projectId",
-            text_key="payload.summary",
-        )
-
-        result = encoder.encode(points)
-
-        if result.is_grouped:
-            print(f"\n--- Grouped by projectId: {len(result.groups)} groups ---")
-            for g_header, rows in result.groups:
-                if g_header:
-                    gh = json.loads(g_header)
-                    print(f"  {gh[1]}: {gh[2]} nodes")
-        else:
-            print("\n--- No grouping (all unique projectIds) ---")
-
-        # If multiple projects exist, grouping should activate
-        project_ids = {p["payload"].get("projectId") for p in points}
-        if len(project_ids) < len(points):
-            assert result.is_grouped
-
     def test_search_with_dcp(self):
         """Search with a zero vector to get scored results, then encode."""
-        # Get collection info for vector dimension
         info = qdrant_collection_info()
         dim = info["config"]["params"]["vectors"]["size"]
 
-        # Search with zero vector (returns arbitrary results with scores)
         zero_vec = [0.0] * dim
         search_results = qdrant_search(zero_vec, limit=5)
         if not search_results:
             pytest.skip("No search results returned")
 
-        # search results have: { id, score, payload: {...} }
         schema = DcpSchema.from_dict(ENGRAM_SCHEMA_DEF)
 
         for r in search_results:
@@ -246,11 +205,9 @@ class TestEngramQdrantIntegration:
         encoder = DcpEncoder(
             schema=schema,
             mapping=ENGRAM_MAPPING,
-            group_key="projectId",
             text_key="payload.summary",
         )
 
-        # Encode using score from search results
         result = encoder.encode(search_results)
         assert result.header != ""
 
@@ -264,7 +221,7 @@ class TestEngramQdrantIntegration:
         if not points:
             pytest.skip("No points in collection")
 
-        # NL format (how engram_pull currently returns to LLM)
+        # NL format
         nl_lines = []
         for i, p in enumerate(points):
             payload = p["payload"]
@@ -288,7 +245,6 @@ class TestEngramQdrantIntegration:
         encoder = DcpEncoder(
             schema=schema,
             mapping=ENGRAM_MAPPING,
-            group_key="projectId",
             text_key="payload.summary",
         )
         result = encoder.encode(points)
@@ -304,5 +260,4 @@ class TestEngramQdrantIntegration:
         print(f"DCP: {dcp_tokens:.0f} tokens ({len(dcp_text)} chars)")
         print(f"Reduction: {reduction:.0f}%")
 
-        # DCP should be smaller
         assert dcp_tokens < nl_tokens, "DCP should use fewer tokens than NL"

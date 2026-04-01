@@ -2,9 +2,9 @@
 
 import json
 import pytest
-from dcp_rag.core.schema import DcpSchema, load_default_registry
-from dcp_rag.core.mapping import FieldMapping
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.schema import DcpSchema, load_default_registry
+from dcp_py.core.mapping import FieldMapping
+from dcp_py.core.encoder import DcpEncoder
 
 
 SCHEMA = load_default_registry().get("rag-chunk-meta:v1")
@@ -33,7 +33,7 @@ TEXTS = ["auth content", "api content"]
 
 
 def make_encoder(**kwargs):
-    return DcpEncoder(schema=SCHEMA, mapping=MAPPING, enable_grouping=False, **kwargs)
+    return DcpEncoder(schema=SCHEMA, mapping=MAPPING, **kwargs)
 
 
 class TestShadowLevel:
@@ -107,11 +107,9 @@ class TestShadowLevel:
         enc = make_encoder()
         result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=4)
 
-        meta, text = result.groups[0][1][0]
-        # Should be "source: docs/auth.md, page: 12, ..." not JSON array
+        meta, text = result.rows[0]
         assert "source: docs/auth.md" in meta
         assert "score: 0.92" in meta
-        # Should NOT be a valid JSON array
         assert not meta.startswith("[")
 
     def test_data_rows_unchanged_l0_to_l3(self):
@@ -119,46 +117,14 @@ class TestShadowLevel:
         enc = make_encoder()
         results = [enc.encode(CHUNKS, texts=TEXTS, shadow_level=i) for i in range(4)]
 
-        # Extract data rows from each
-        rows_per_level = []
-        for r in results:
-            rows = [meta for _, row_list in r.groups for meta, _ in row_list]
-            rows_per_level.append(rows)
-
+        rows_per_level = [[meta for meta, _ in r.rows] for r in results]
         for i in range(1, 4):
             assert rows_per_level[i] == rows_per_level[0], \
                 f"L{i} data rows differ from L0"
 
-    def test_grouping_works_with_shadow_levels(self):
-        """$G grouping should work at all positional levels (L0-L3)."""
-        enc = DcpEncoder(schema=SCHEMA, mapping=MAPPING, enable_grouping=True)
-        # Use chunks with duplicate source for grouping
-        chunks = [
-            {"score": 0.9, "metadata": {"source": "docs/auth.md", "page": 1, "section": "A", "chunk_index": 0}},
-            {"score": 0.8, "metadata": {"source": "docs/auth.md", "page": 2, "section": "B", "chunk_index": 1}},
-        ]
-        texts = ["text1", "text2"]
-
-        for level in range(4):
-            result = enc.encode(chunks, texts=texts, shadow_level=level)
-            assert result.is_grouped, f"L{level} should still group"
-
-    def test_level4_no_grouping(self):
-        """L4 NL fallback should not use grouping."""
-        enc = DcpEncoder(schema=SCHEMA, mapping=MAPPING, enable_grouping=True)
-        chunks = [
-            {"score": 0.9, "metadata": {"source": "docs/auth.md", "page": 1, "section": "A", "chunk_index": 0}},
-            {"score": 0.8, "metadata": {"source": "docs/auth.md", "page": 2, "section": "B", "chunk_index": 1}},
-        ]
-        texts = ["text1", "text2"]
-
-        result = enc.encode(chunks, texts=texts, shadow_level=4)
-        assert not result.is_grouped
-
     def test_cutdown_with_shadow_levels(self):
         """Cutdown should work at all shadow levels."""
         enc = make_encoder()
-        # Chunks with missing page and chunk_index
         sparse_chunks = [
             {"score": 0.9, "metadata": {"source": "docs/auth.md", "section": "A"}},
         ]
@@ -167,3 +133,10 @@ class TestShadowLevel:
         for level in range(5):
             result = enc.encode(sparse_chunks, texts=texts, shadow_level=level)
             assert result.is_cutdown, f"L{level} should detect cutdown"
+
+    def test_no_grouping_in_any_level(self):
+        """$G should never appear at any shadow level."""
+        enc = make_encoder()
+        for level in range(5):
+            result = enc.encode(CHUNKS, texts=TEXTS, shadow_level=level)
+            assert '"$G"' not in result.to_string()

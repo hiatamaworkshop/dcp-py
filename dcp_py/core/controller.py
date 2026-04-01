@@ -19,7 +19,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from dcp_rag.core.schema import DcpSchema, SchemaRegistry, load_default_registry
+from dcp_py.core.schema import DcpSchema, SchemaRegistry, load_default_registry
 
 
 @dataclass

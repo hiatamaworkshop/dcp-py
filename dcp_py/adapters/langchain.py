@@ -1,7 +1,7 @@
 """LangChain adapter: DcpRunnable.
 
 Usage:
-    from dcp_rag.adapters.langchain import DcpRunnable
+    from dcp_py.adapters.langchain import DcpRunnable
 
     chain = retriever | DcpRunnable.from_preset("qdrant") | prompt | llm
 """
@@ -19,7 +19,7 @@ except ImportError:
         "Install with: pip install dcp-rag[langchain]"
     )
 
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.encoder import DcpEncoder
 
 
 class DcpRunnable(RunnableSerializable[list[Document], list[Document]]):

@@ -1,11 +1,11 @@
-"""Tests for DcpEncoder — cutdown, $G grouping, batch encoding."""
+"""Tests for DcpEncoder — cutdown, '-' absent values, batch encoding, DataFrame."""
 
 import json
 import pytest
 
-from dcp_rag.core.schema import DcpSchema, load_default_registry
-from dcp_rag.core.mapping import FieldMapping
-from dcp_rag.core.encoder import DcpEncoder, EncodedBatch
+from dcp_py.core.schema import DcpSchema, load_default_registry
+from dcp_py.core.mapping import FieldMapping
+from dcp_py.core.encoder import DcpEncoder, EncodedBatch
 
 
 @pytest.fixture
@@ -74,28 +74,13 @@ def _sparse_texts():
     return ["Billing cycles reset...", "Overage charges apply...", "Webhooks sent via POST..."]
 
 
-def _unique_source_chunks():
-    """All chunks from different sources — grouping should be skipped."""
-    return [
-        {"id": "1", "score": 0.9, "metadata": {"source": "a.md", "page": 1, "section": "A", "chunk_index": 0}},
-        {"id": "2", "score": 0.8, "metadata": {"source": "b.md", "page": 2, "section": "B", "chunk_index": 1}},
-        {"id": "3", "score": 0.7, "metadata": {"source": "c.md", "page": 3, "section": "C", "chunk_index": 2}},
-    ]
-
-
 class TestBitmaskDetection:
     def test_full_mask(self, pinecone_encoder, registry):
         chunks = _pinecone_chunks()
         resolved = [pinecone_encoder._mapping.resolve(c) for c in chunks]
         mask = pinecone_encoder.detect_mask(resolved)
-        schema = registry.get("rag-chunk-meta:v1")
-        # page is None for all, but it's in metadata → resolve returns None
-        # source, section, score, chunk_index are present → 4 bits
-        # page is None → bit not set
-        assert mask == 0b10110 | 0b00001  # source + section + score + chunk_index = 10111 = 0x17
-        # Wait, page is in metadata but value is None.
-        # resolve_path returns None → bit not set.
-        # So: source(1), page(0), section(1), score(1), chunk_index(1) = 10111
+        # page is None for all → bit not set
+        # source, section, score, chunk_index present → 0b10111
         assert mask == 0b10111
 
     def test_sparse_mask(self, pinecone_encoder):
@@ -126,7 +111,7 @@ class TestCutdown:
         result = pinecone_encoder.encode(chunks, texts=texts)
         assert result.is_cutdown
         assert result.mask == 0b10010
-        assert "#12" in result.schema_id  # hex(0b10010) = 0x12
+        assert "#12" in result.schema_id
 
     def test_cutdown_header_contains_active_fields(self, pinecone_encoder):
         chunks = _sparse_chunks()
@@ -139,7 +124,6 @@ class TestCutdown:
         assert header[4] == "score"
 
     def test_degenerate_empty_mask(self, registry):
-        """If no fields resolve at all, encoder returns empty."""
         encoder = DcpEncoder(
             schema="rag-chunk-meta:v1",
             mapping={"source": "nonexistent.path", "score": "also.missing"},
@@ -151,84 +135,57 @@ class TestCutdown:
         assert result.header == ""
 
 
-class TestGrouping:
-    def test_grouped_output(self, pinecone_encoder):
-        chunks = _pinecone_chunks()
-        texts = _pinecone_texts()
+class TestAbsentValues:
+    """Absent (None) fields must appear as '-', not null."""
+
+    def test_none_field_becomes_dash(self, pinecone_encoder):
+        """page is None in one row, present in other → '-' in the None row."""
+        chunks = [
+            {"id": "1", "score": 0.9,
+             "metadata": {"source": "a.md", "page": None, "section": "A", "chunk_index": 0}},
+            {"id": "2", "score": 0.8,
+             "metadata": {"source": "b.md", "page": 3, "section": "B", "chunk_index": 1}},
+        ]
+        result = pinecone_encoder.encode(chunks, texts=["text1", "text2"])
+        row = json.loads(result.rows[0][0])
+        assert "-" in row
+        assert None not in row
+
+    def test_sparse_rows_have_no_null(self, pinecone_encoder):
+        chunks = _sparse_chunks()
+        texts = _sparse_texts()
         result = pinecone_encoder.encode(chunks, texts=texts)
-        assert result.is_grouped
-        # 2 groups: docs/auth.md (2 chunks), api/endpoints.yaml (1 chunk)
-        assert len(result.groups) == 2
+        for row_json, _ in result.rows:
+            row = json.loads(row_json)
+            assert None not in row
 
-        # First group: docs/auth.md
-        g0_header, g0_rows = result.groups[0]
-        g0h = json.loads(g0_header)
-        assert g0h[0] == "$G"
-        assert g0h[1] == "docs/auth.md"
-        assert g0h[2] == 2  # 2 chunks in group
-        assert len(g0_rows) == 2
-
-        # Second group: api/endpoints.yaml
-        g1_header, g1_rows = result.groups[1]
-        g1h = json.loads(g1_header)
-        assert g1h[1] == "api/endpoints.yaml"
-        assert g1h[2] == 1
-
-    def test_no_grouping_unique_sources(self, pinecone_encoder):
-        chunks = _unique_source_chunks()
-        texts = ["A text", "B text", "C text"]
-        result = pinecone_encoder.encode(chunks, texts=texts)
-        assert not result.is_grouped
-
-    def test_grouping_disabled(self, registry):
-        encoder = DcpEncoder.from_preset(
-            "pinecone", registry=registry, enable_grouping=False
-        )
-        chunks = _pinecone_chunks()
-        texts = _pinecone_texts()
-        result = encoder.encode(chunks, texts=texts)
-        assert not result.is_grouped
-
-    def test_group_sorted_by_score(self, pinecone_encoder):
-        chunks = _pinecone_chunks()
-        texts = _pinecone_texts()
-        result = pinecone_encoder.encode(chunks, texts=texts)
-        # docs/auth.md group: 0.92 should come before 0.88
-        _, rows = result.groups[0]
-        scores = []
-        for meta_json, _ in rows:
-            meta = json.loads(meta_json)
-            # With cutdown (page is None for all → dropped), grouped row fields are:
-            # section, score, chunk_index (source in $G header, page dropped)
-            scores.append(meta[1])  # score at position 1 (after section)
-        assert scores == sorted(scores, reverse=True)
-
-    def test_source_not_in_grouped_rows(self, pinecone_encoder):
-        """source field should be in $G header, not in per-chunk rows."""
-        chunks = _pinecone_chunks()
-        texts = _pinecone_texts()
-        result = pinecone_encoder.encode(chunks, texts=texts)
-        _, rows = result.groups[0]
-        for meta_json, _ in rows:
-            meta = json.loads(meta_json)
-            # Cutdown active: page is None for all → dropped from mask
-            # Grouped removes source → row has: section, score, chunk_index = 3 fields
-            assert len(meta) == 3
-            # Verify source string is not in the row values
-            assert "docs/auth.md" not in [str(v) for v in meta]
+    def test_encode_metadata_none_becomes_dash(self, pinecone_encoder):
+        chunk = {
+            "score": 0.92,
+            "metadata": {"source": "docs/auth.md", "page": None, "section": "JWT", "chunk_index": 3},
+        }
+        result = pinecone_encoder.encode_metadata(chunk)
+        assert None not in result["_dcp"]
+        assert "-" not in result["_dcp"]  # page dropped by cutdown (all None → bit 0)
 
 
 class TestEncodedBatch:
-    def test_to_lines(self, pinecone_encoder):
+    def test_to_lines_with_text(self, pinecone_encoder):
         chunks = _pinecone_chunks()
         texts = _pinecone_texts()
         result = pinecone_encoder.encode(chunks, texts=texts)
         lines = result.to_lines()
-        # First line: $S header
         assert lines[0].startswith('["$S"')
-        # Should contain $G lines
-        g_lines = [l for l in lines if l.startswith('["$G"')]
-        assert len(g_lines) == 2
+        # each row has a text line after it
+        assert any("JWT tokens expire" in l for l in lines)
+
+    def test_to_lines_without_text(self, pinecone_encoder):
+        chunks = _sparse_chunks()
+        result = pinecone_encoder.encode(chunks)  # no texts
+        lines = result.to_lines()
+        assert lines[0].startswith('["$S"')
+        # no text lines — only header + rows
+        assert len(lines) == 1 + len(chunks)
 
     def test_to_string(self, pinecone_encoder):
         chunks = _pinecone_chunks()
@@ -236,7 +193,6 @@ class TestEncodedBatch:
         result = pinecone_encoder.encode(chunks, texts=texts)
         s = result.to_string()
         assert '"$S"' in s
-        assert '"$G"' in s
         assert "JWT tokens expire" in s
 
     def test_meta_only_lines(self, pinecone_encoder):
@@ -244,9 +200,16 @@ class TestEncodedBatch:
         texts = _pinecone_texts()
         result = pinecone_encoder.encode(chunks, texts=texts)
         meta_lines = result.meta_only_lines()
-        # Should not contain text
         for line in meta_lines:
             assert "JWT tokens expire" not in line
+
+    def test_no_grouping_in_output(self, pinecone_encoder):
+        """$G should never appear — grouping is removed."""
+        chunks = _pinecone_chunks()
+        texts = _pinecone_texts()
+        result = pinecone_encoder.encode(chunks, texts=texts)
+        output = result.to_string()
+        assert '"$G"' not in output
 
 
 class TestEncodeMetadata:
@@ -258,8 +221,8 @@ class TestEncodeMetadata:
         result = pinecone_encoder.encode_metadata(chunk)
         assert "_dcp" in result
         assert "_dcp_schema" in result
-        # page is None → cutdown
-        assert result["_dcp_schema"] == "rag-chunk-meta:v1#17"  # 0b10111
+        # page is None → cutdown (bit not set)
+        assert result["_dcp_schema"] == "rag-chunk-meta:v1#17"
 
     def test_sparse_chunk(self, pinecone_encoder):
         chunk = {"score": 0.5, "metadata": {"source": "test.md"}}
@@ -268,7 +231,6 @@ class TestEncodeMetadata:
         assert "#12" in result["_dcp_schema"]
 
     def test_empty_chunk(self):
-        """Chunk with no resolvable fields returns empty dict."""
         encoder = DcpEncoder(
             schema="rag-chunk-meta:v1",
             mapping={"source": "nonexistent"},
@@ -281,7 +243,7 @@ class TestEmptyBatch:
     def test_empty_chunks(self, pinecone_encoder):
         result = pinecone_encoder.encode([], texts=[])
         assert result.header == ""
-        assert result.groups == []
+        assert result.rows == []
         assert result.mask == 0
 
 
@@ -321,12 +283,57 @@ class TestTextKey:
         lines = result.to_lines()
         assert any("Hello world" in l for l in lines)
 
-    def test_no_text_key_no_texts_raises(self, pinecone_encoder):
-        chunks = _pinecone_chunks()
-        with pytest.raises(ValueError, match="text_key"):
-            pinecone_encoder.encode(chunks)
-
     def test_length_mismatch_raises(self, pinecone_encoder):
         chunks = _pinecone_chunks()
         with pytest.raises(ValueError, match="mismatch"):
             pinecone_encoder.encode(chunks, texts=["only one"])
+
+    def test_no_text_no_text_key_produces_empty_text(self, pinecone_encoder):
+        """Without texts= or text_key, encode() still works — rows have empty text."""
+        chunks = _sparse_chunks()
+        result = pinecone_encoder.encode(chunks)
+        assert len(result.rows) == len(chunks)
+        for _, text in result.rows:
+            assert text == ""
+
+
+class TestDataFrame:
+    def test_from_dataframe_basic(self):
+        pytest.importorskip("pandas")
+        import pandas as pd
+
+        df = pd.DataFrame([
+            {"title": "Intro to DCP", "score": 0.92, "source": "docs/dcp.md"},
+            {"title": "Shadow System", "score": 0.85, "source": "docs/shadow.md"},
+            {"title": "Encoder Guide", "score": 0.78, "source": "docs/encoder.md"},
+        ])
+        encoder, batch = DcpEncoder.from_dataframe(df, domain="search-result")
+        assert batch.header != ""
+        assert len(batch.rows) == 3
+        # No None in any row
+        for row_json, _ in batch.rows:
+            row = json.loads(row_json)
+            assert None not in row
+
+    def test_from_dataframe_exclude(self):
+        pytest.importorskip("pandas")
+        import pandas as pd
+
+        df = pd.DataFrame([
+            {"title": "Doc A", "score": 0.9, "internal_id": "abc123"},
+            {"title": "Doc B", "score": 0.8, "internal_id": "def456"},
+        ])
+        encoder, batch = DcpEncoder.from_dataframe(
+            df, domain="docs", exclude=["internal_id"]
+        )
+        header = json.loads(batch.header)
+        field_names = header[3:]  # after $S, id, count
+        assert "internal_id" not in field_names
+
+    def test_from_dataframe_schema_id(self):
+        pytest.importorskip("pandas")
+        import pandas as pd
+
+        df = pd.DataFrame([{"x": 1, "y": 2}])
+        encoder, batch = DcpEncoder.from_dataframe(df, domain="my-data", version=2)
+        assert "my-data:v2" in batch.schema_id

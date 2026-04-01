@@ -26,9 +26,9 @@ from dataclasses import dataclass, field as dc_field
 from pathlib import Path
 from typing import Any
 
-from dcp_rag.core.schema import DcpSchema, FieldType, SchemaRegistry
-from dcp_rag.core.mapping import FieldMapping
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.schema import DcpSchema, FieldType, SchemaRegistry
+from dcp_py.core.mapping import FieldMapping
+from dcp_py.core.encoder import DcpEncoder
 
 
 # ── Field ordering heuristics ────────────────────────────────

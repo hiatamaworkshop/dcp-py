@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-# Default schemas directory: dcp_rag/schemas/ (inside the package)
+# Default schemas directory: dcp_py/schemas/ (inside the package)
 _SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"
 
 
@@ -75,6 +75,10 @@ class DcpSchema:
         field_count: Number of fields (must match len(fields))
         types: Field name → FieldType mapping
         examples: List of example positional arrays
+        origin: Optional metadata about the data stream this schema targets.
+                Dict with optional keys:
+                  source    — free-form stream identifier (e.g. "tavily/search", "sensor/gyro")
+                  direction — "input" | "output" | "bidirectional" (default: "bidirectional")
     """
 
     id: str
@@ -83,6 +87,7 @@ class DcpSchema:
     field_count: int
     types: dict[str, FieldType] = field(default_factory=dict)
     examples: tuple[tuple[Any, ...], ...] = ()
+    origin: dict[str, str] | None = None
 
     @property
     def full_mask(self) -> int:
@@ -225,6 +230,7 @@ class DcpSchema:
 
         fields = tuple(data["fields"])
         examples = tuple(tuple(ex) for ex in data.get("examples", []))
+        origin = data.get("origin")  # optional: {source, direction}
 
         return cls(
             id=data["id"],
@@ -233,6 +239,7 @@ class DcpSchema:
             field_count=data["fieldCount"],
             types=types,
             examples=examples,
+            origin=origin,
         )
 
     @classmethod

@@ -4,7 +4,7 @@ import json
 import pytest
 from pathlib import Path
 
-from dcp_rag.core.schema import DcpSchema, FieldType, SchemaRegistry, load_default_registry
+from dcp_py.core.schema import DcpSchema, FieldType, SchemaRegistry, load_default_registry
 
 
 SCHEMAS_DIR = Path(__file__).resolve().parent.parent / "schemas"

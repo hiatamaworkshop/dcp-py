@@ -1,7 +1,7 @@
 """LlamaIndex adapter: DcpNodePostprocessor.
 
 Usage:
-    from dcp_rag.adapters.llamaindex import DcpNodePostprocessor
+    from dcp_py.adapters.llamaindex import DcpNodePostprocessor
 
     query_engine = index.as_query_engine(
         node_postprocessors=[DcpNodePostprocessor.from_preset("pinecone")]
@@ -21,7 +21,7 @@ except ImportError:
         "Install with: pip install dcp-rag[llamaindex]"
     )
 
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.encoder import DcpEncoder
 
 
 class DcpNodePostprocessor(BaseNodePostprocessor):

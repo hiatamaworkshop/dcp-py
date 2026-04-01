@@ -2,8 +2,8 @@
 
 import json
 import pytest
-from dcp_rag.core.schema import DcpSchema, FieldType
-from dcp_rag.core.controller import OutputController, PlacementResult
+from dcp_py.core.schema import DcpSchema, FieldType
+from dcp_py.core.controller import OutputController, PlacementResult
 
 
 # Custom schema for testing
@@ -166,7 +166,7 @@ class TestAutoBindMapping:
     """Tests for FieldMapping.auto_bind."""
 
     def test_flat_auto_bind(self):
-        from dcp_rag.core.mapping import FieldMapping
+        from dcp_py.core.mapping import FieldMapping
 
         sample = {"level": "error", "service": "auth", "timestamp": 1234, "code": "E_TIMEOUT"}
         mapping = FieldMapping.auto_bind(
@@ -181,7 +181,7 @@ class TestAutoBindMapping:
         assert resolved["level"] == "error"
 
     def test_nested_auto_bind(self):
-        from dcp_rag.core.mapping import FieldMapping
+        from dcp_py.core.mapping import FieldMapping
 
         sample = {
             "score": 0.9,
@@ -202,7 +202,7 @@ class TestAutoBindMapping:
         assert resolved["score"] == 0.9
 
     def test_auto_bind_with_overrides(self):
-        from dcp_rag.core.mapping import FieldMapping
+        from dcp_py.core.mapping import FieldMapping
 
         sample = {"score": 0.9, "metadata": {"file_path": "docs/auth.md"}}
         mapping = FieldMapping.auto_bind(
@@ -217,7 +217,7 @@ class TestAutoBindMapping:
         assert resolved["source"] == "docs/auth.md"
 
     def test_auto_bind_missing_field(self):
-        from dcp_rag.core.mapping import FieldMapping
+        from dcp_py.core.mapping import FieldMapping
 
         sample = {"score": 0.9}
         mapping = FieldMapping.auto_bind(

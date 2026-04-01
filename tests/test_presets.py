@@ -2,8 +2,8 @@
 
 import pytest
 
-from dcp_rag.core.presets import get_preset, list_presets
-from dcp_rag.core.mapping import FieldMapping
+from dcp_py.core.presets import get_preset, list_presets
+from dcp_py.core.mapping import FieldMapping
 
 
 class TestPresets:

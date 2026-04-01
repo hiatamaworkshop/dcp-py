@@ -1,7 +1,7 @@
 """Haystack adapter: DcpComponent.
 
 Usage:
-    from dcp_rag.adapters.haystack import DcpComponent
+    from dcp_py.adapters.haystack import DcpComponent
 
     pipeline.add_component("dcp", DcpComponent.from_preset("weaviate"))
     pipeline.connect("retriever.documents", "dcp.documents")
@@ -20,7 +20,7 @@ except ImportError:
         "Install with: pip install dcp-rag[haystack]"
     )
 
-from dcp_rag.core.encoder import DcpEncoder
+from dcp_py.core.encoder import DcpEncoder
 
 
 @component

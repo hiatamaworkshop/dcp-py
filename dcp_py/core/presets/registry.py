@@ -6,7 +6,7 @@ based on the DB's native response structure.
 
 from __future__ import annotations
 
-from dcp_rag.core.mapping import FieldMapping
+from dcp_py.core.mapping import FieldMapping
 
 
 # -- Preset definitions --

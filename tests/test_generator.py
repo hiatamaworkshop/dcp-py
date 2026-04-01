@@ -2,7 +2,7 @@
 
 import json
 import pytest
-from dcp_rag.core.generator import SchemaGenerator, SchemaDraft
+from dcp_py.core.generator import SchemaGenerator, SchemaDraft
 
 
 # ── Sample data fixtures ─────────────────────────────────────
@@ -191,7 +191,7 @@ class TestSchemaGenerator:
         gen = SchemaGenerator()
         draft = gen.from_samples(LOG_SAMPLES, domain="log-entry")
 
-        from dcp_rag.core.schema import DcpSchema
+        from dcp_py.core.schema import DcpSchema
         d = draft.to_dict()
         assert d["$dcp"] == "schema"
         schema2 = DcpSchema.from_dict(d)
@@ -216,7 +216,7 @@ class TestSchemaGenerator:
         path = tmp_path / "service-registry.v1.json"
         draft.save(path)
 
-        from dcp_rag.core.schema import DcpSchema
+        from dcp_py.core.schema import DcpSchema
         loaded = DcpSchema.from_file(path)
         assert loaded.id == "service-registry:v1"
         assert loaded.field_count == draft.schema.field_count
